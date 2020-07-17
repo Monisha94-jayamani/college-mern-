@@ -1,3 +1,4 @@
+//https://collegerecords.herokuapp.com/staff and /student
 const express = require("express");
 const app = express();
 const boyParser = require("body-parser");
