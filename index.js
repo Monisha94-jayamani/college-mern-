@@ -1,74 +1,106 @@
+//https://collegerecords.herokuapp.com/staff and /student
 const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
 const app = express();
+const boyParser = require("body-parser");
+const port = process.env.PORT || 5000;
+const cors = require("cors");
 const dotenv = require("dotenv");
 dotenv.config();
-const port = process.env.PORT || 5001;
-const mongoose = require("mongoose");
-
-try {
-  mongoose.connect(
-    "mongodb+srv://killer:bmEU6SzDNkLeEQIc@cluster0.jqjgo.mongodb.net/url?retryWrites=true&w=majority",
-    { useNewUrlParser: true, useUnifiedTopology: true },
-    () => console.log("connected")
-  );
-} catch (error) {
-  console.log("could not connect");
-}
-mongoose.set("useCreateIndex", true);
-app.use(bodyParser.urlencoded({ extended: true }));
-const { UrlModel } = require("./models/urlshort");
 app.use(cors());
-//app.use(express.static("images"));
-app.set("view engine", "ejs");
-//app.set("title", "URL-shortener");
+app.use(boyParser.json());
+const mongodb = require("mongodb");
+const mongoClient = mongodb.MongoClient;
+const dbUrl =
+  "mongodb+srv://monisha:4QJnwN3i7wN0jWGB@cluster0.a3jmi.mongodb.net/student?retryWrites=true&w=majority";
+//password:4QJnwN3i7wN0jWGB
+//url:mongodb+srv://monisha:4QJnwN3i7wN0jWGB@cluster0.a3jmi.mongodb.net/student?retryWrites=true&w=majority
+//const url =
+//"mongodb+srv://monisha:4QJnwN3i7wN0jWGB@cluster0.a3jmi.mongodb.net/student?retryWrites=true&w=majority";
+
+const ObjectID = mongodb.ObjectID;
+app.get("/staff", (req, res) => {
+  mongoClient.connect(dbUrl, (err, client) => {
+    if (err) throw err;
+    client
+      .db("student")
+      .collection("staffdetails")
+      .find()
+      .toArray()
+      .then((data) => {
+        res.json(data);
+      })
+      .catch((err) => res.json({ message: "no data found", error: err }));
+  });
+});
+app.post("/staff", (req, res) => {
+  mongoClient.connect(dbUrl, (err, client) => {
+    if (err) throw err;
+    client
+      .db("student")
+      .collection("staffdetails")
+      .insertOne(req.body, (err, data) => {
+        if (err) throw err;
+        client.close();
+        console.log("staff created");
+        res.json({ message: "staff details created" });
+      });
+  });
+});
+app.get("/student", (req, res) => {
+  console.log("get");
+  mongoClient.connect(dbUrl, (err, client) => {
+    client
+      .db("student")
+      .collection("studentdetails")
+      .find()
+      .toArray()
+      .then((data) => {
+        res.json(data);
+      })
+      .catch((err) => res.json({ message: "no data found", error: err }));
+  });
+});
+app.post("/student", (req, res) => {
+  mongoClient.connect(dbUrl, (err, client) => {
+    client
+      .db("student")
+      .collection("studentdetails")
+      .insertOne(req.body, (err, data) => {
+        if (err) throw err;
+        client.close();
+        console.log("user created successfully");
+        res.status(200).json({ message: "collection is created" });
+      });
+  });
+});
+app.put("/studentupdate", (req, res) => {
+  mongoClient.connect(dbUrl, (err, client) => {
+    client
+      .db("student")
+      .collection("studentdetails")
+      .findOneAndUpdate({ id: req.body.id }, { $set: req.body })
+      .then((data) => {
+        console.log("student data updated successfully", data);
+        client.close();
+        res.json({ message: "student updated" });
+      });
+  });
+});
+
+app.delete("/studentdelete", (req, res) => {
+  console.log("delete", req.body);
+  mongoClient.connect(dbUrl, (err, client) => {
+    if (err) throw err;
+    client
+      .db("student")
+      .collection("studentdetails")
+      .deleteOne({ id: req.body.id }, (err, data) => {
+        if (err) throw err;
+        client.close();
+        res.json({ message: "data deleted" });
+      });
+  });
+});
 app.listen(port, () => {
-  console.log("your app is listening in", port);
+  console.log(`server is listening ${port}`);
 });
-app.get("/", function (req, res) {
-  let allUrl = UrlModel.find(function (err, data) {
-    console.log("renderresult", data, port);
-    res.render("home", {
-      urlResult: data,
-      PORT: port,
-    });
-  });
-});
-app.post("/createurl", function (req, res) {
-  console.log(UrlGenerator());
-  let UrlShort = new UrlModel({
-    longUrl: req.body.longurl,
-    shortUrl: UrlGenerator(),
-  });
-
-  UrlShort.save(function (err, data) {
-    if (err) throw err;
-
-    res.redirect("/");
-  });
-});
-app.get("/:urlId", function (req, res) {
-  console.log(req.params.urlId);
-  UrlModel.findOne({ shortUrl: req.params.urlId }, function (err, data) {
-    if (err) throw err;
-    res.redirect(data.longUrl);
-  });
-});
-app.get("/delete/:id", function (req, res) {
-  UrlModel.findByIdAndDelete({ _id: req.params.id }, function (err, data) {
-    if (err) throw err;
-    res.redirect("/");
-  });
-});
-function UrlGenerator() {
-  var result = "";
-  var characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  var characterLength = characters.length;
-  for (var i = 0; i < 5; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characterLength));
-  }
-  console.log(result);
-  return result;
-}
